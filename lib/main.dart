@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 //import 'package:flutter/widget_previews.dart';
-import 'features/library/library_page.dart';
+//import 'features/library/library_page.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,7 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const LibraryPage(),
+      home: const SplashScreen(),
     );
   }
 }
