@@ -34,7 +34,7 @@ dependencies:
   flutter_riverpod: ^2.6.1
   file_picker: ^10.1.9
   path_provider: ^2.1.5
-  pdfrx: ^1.0.101
+  pdfrx: ^2.4.5
   shared_preferences: ^2.5.3
   hive: ^2.2.3
   hive_flutter: ^1.1.0
