@@ -1,9 +1,14 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/models/book.dart';
 import '../../services/storage_services.dart';
+import '../../services/theme_controller.dart';
 import '../reader/reader_page.dart';
+
+enum _BookAction { remove, deleteFile }
 
 class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key});
@@ -20,6 +25,69 @@ class _LibraryPageState extends State<LibraryPage> {
   final StorageServices _storageServices = StorageServices();
   List<Book> _books = [];
   bool _isLoading = true;
+
+  Future<bool> _confirmBookAction(Book book, bool deleteFile) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(deleteFile ? 'Eliminar PDF' : 'Quitar de la biblioteca'),
+        content: Text(
+          deleteFile
+              ? '¿Deseas eliminar "${book.title}" de la biblioteca y del dispositivo?'
+              : '¿Deseas quitar "${book.title}" de la biblioteca? El archivo no se borrará.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: deleteFile ? Colors.red : _blue,
+            ),
+            child: Text(deleteFile ? 'Eliminar' : 'Quitar'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  Future<void> _removeBook(Book book, {required bool deleteFile}) async {
+    if (!await _confirmBookAction(book, deleteFile)) {
+      return;
+    }
+
+    await _storageServices.deleteBook(book.id);
+
+    var fileDeleted = true;
+    if (deleteFile) {
+      try {
+        final file = File(book.path);
+        if (await file.exists()) {
+          await file.delete();
+          fileDeleted = true;
+        }
+      } catch (_) {
+        fileDeleted = false;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _books.removeWhere((item) => item.id == book.id);
+    });
+
+    final message = deleteFile
+        ? (fileDeleted
+              ? 'PDF eliminado'
+              : 'Se quitó de la biblioteca, pero el archivo no pudo eliminarse')
+        : 'PDF quitado de la biblioteca';
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   void initState() {
@@ -42,20 +110,41 @@ class _LibraryPageState extends State<LibraryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = ThemeController.instance.isDark;
+    final appBarColor = isDark ? const Color(0xFF101820) : _pageBackground;
+    final foregroundColor = isDark ? const Color(0xFFEAF2F8) : _navy;
+
     return Scaffold(
-      backgroundColor: _pageBackground,
+      backgroundColor: isDark ? const Color(0xFF101820) : _pageBackground,
       appBar: AppBar(
-        backgroundColor: _pageBackground,
-        foregroundColor: _navy,
+        backgroundColor: appBarColor,
+        foregroundColor: foregroundColor,
         elevation: 0,
         titleSpacing: 20,
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.auto_stories_rounded, color: _blue),
             SizedBox(width: 10),
             Text('BookHub', style: TextStyle(fontWeight: FontWeight.w700)),
           ],
         ),
+        actions: [
+          AnimatedBuilder(
+            animation: ThemeController.instance,
+            builder: (context, child) {
+              return IconButton(
+                tooltip: isDark
+                    ? 'Cambiar a modo claro'
+                    : 'Cambiar a modo oscuro',
+                onPressed: ThemeController.instance.toggle,
+                icon: Icon(
+                  isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -69,11 +158,11 @@ class _LibraryPageState extends State<LibraryPage> {
                 children: [
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Tu biblioteca',
                           style: TextStyle(
-                            color: _navy,
+                            color: foregroundColor,
                             fontSize: 28,
                             fontWeight: FontWeight.w700,
                           ),
@@ -85,7 +174,9 @@ class _LibraryPageState extends State<LibraryPage> {
                           vertical: 7,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE2EDF5),
+                          color: isDark
+                              ? const Color(0xFF1D2A35)
+                              : const Color(0xFFE2EDF5),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -192,14 +283,17 @@ class _LibraryPageState extends State<LibraryPage> {
       separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final book = _books[index];
+        final isDark = ThemeController.instance.isDark;
 
         return Card(
           margin: EdgeInsets.zero,
-          color: Colors.white,
+          color: isDark ? const Color(0xFF19232D) : Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFFE5EDF3)),
+            side: BorderSide(
+              color: isDark ? const Color(0xFF30414F) : const Color(0xFFE5EDF3),
+            ),
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(
@@ -223,19 +317,62 @@ class _LibraryPageState extends State<LibraryPage> {
               book.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: _navy, fontWeight: FontWeight.w600),
-            ),
-            subtitle: const Padding(
-              padding: EdgeInsets.only(top: 5),
-              child: Text(
-                'Documento PDF · Toca para abrir',
-                style: TextStyle(color: Color(0xFF63798B), fontSize: 12),
+              style: TextStyle(
+                color: isDark ? const Color(0xFFEAF2F8) : _navy,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            trailing: const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 16,
-              color: _blue,
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: Text(
+                'Documento PDF · Toca para abrir',
+                style: TextStyle(
+                  color: isDark
+                      ? const Color(0xFFA9BAC7)
+                      : const Color(0xFF63798B),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            trailing: PopupMenuButton<_BookAction>(
+              icon: const Icon(Icons.more_vert_rounded, color: _blue),
+              tooltip: 'Opciones del PDF',
+              onSelected: (action) {
+                switch (action) {
+                  case _BookAction.remove:
+                    _removeBook(book, deleteFile: false);
+                    break;
+                  case _BookAction.deleteFile:
+                    _removeBook(book, deleteFile: true);
+                    break;
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem<_BookAction>(
+                  value: _BookAction.remove,
+                  child: Row(
+                    children: [
+                      Icon(Icons.remove_circle_outline_rounded, size: 20),
+                      SizedBox(width: 10),
+                      Text('Quitar de la lista'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem<_BookAction>(
+                  value: _BookAction.deleteFile,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_outline_rounded,
+                        size: 20,
+                        color: Colors.red,
+                      ),
+                      SizedBox(width: 10),
+                      Text('Eliminar PDF', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
             ),
             onTap: () {
               Navigator.push(
