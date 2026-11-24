@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:page_flip_view/pdf.dart';
 
-class ReaderPage extends StatefulWidget {
-  final String title;
-  final String path;
+import '../../data/models/book.dart';
+import '../../services/storage_services.dart';
 
-  const ReaderPage({super.key, required this.title, required this.path});
+class ReaderPage extends StatefulWidget {
+  final Book book;
+
+  const ReaderPage({super.key, required this.book});
 
   @override
   State<ReaderPage> createState() => _ReaderPageState();
@@ -18,15 +20,31 @@ class _ReaderPageState extends State<ReaderPage> {
   static const _blue = Color(0xFF0B4B78);
   static const _background = Color(0xFFF3F7FA);
 
-  final PageFlipController _pageController = PageFlipController();
+  late final PageFlipController _pageController;
+  final StorageServices _storageServices = StorageServices();
   int _currentPage = 0;
   int _pageCount = 0;
   bool _hasLoadError = false;
 
   @override
+  void initState() {
+    super.initState();
+    _currentPage = widget.book.lastPage;
+    _pageController = PageFlipController(initialPage: widget.book.lastPage);
+  }
+
+  @override
   void dispose() {
+    _saveProgress();
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveProgress() async {
+    await _storageServices.updateBookProgress(
+      id: widget.book.id,
+      lastPage: _currentPage,
+    );
   }
 
   String _pageStatus(bool fileExists) {
@@ -38,7 +56,7 @@ class _ReaderPageState extends State<ReaderPage> {
 
   @override
   Widget build(BuildContext context) {
-    final fileExists = File(widget.path).existsSync();
+    final fileExists = File(widget.book.path).existsSync();
 
     return Scaffold(
       backgroundColor: _background,
@@ -46,7 +64,7 @@ class _ReaderPageState extends State<ReaderPage> {
         backgroundColor: _navy,
         foregroundColor: Colors.white,
         title: Text(
-          widget.title,
+          widget.book.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
@@ -72,15 +90,26 @@ class _ReaderPageState extends State<ReaderPage> {
                 clipBehavior: Clip.antiAlias,
                 child: fileExists
                     ? PdfFlipBook.file(
-                        widget.path,
+                        widget.book.path,
                         controller: _pageController,
                         onLoaded: (pageCount) {
                           if (!mounted) return;
-                          setState(() => _pageCount = pageCount);
+                          final savedPage = pageCount == 0
+                              ? 0
+                              : widget.book.lastPage.clamp(0, pageCount - 1);
+                          setState(() {
+                            _pageCount = pageCount;
+                            _currentPage = savedPage;
+                          });
+                          if (_pageController.page != savedPage) {
+                            _pageController.jumpTo(savedPage);
+                          }
+                          _saveProgress();
                         },
                         onPageChanged: (page) {
                           if (!mounted) return;
                           setState(() => _currentPage = page);
+                          _saveProgress();
                         },
                         paperColor: Colors.white,
                         enableZoom: true,

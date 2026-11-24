@@ -4,7 +4,7 @@ import '../data/models/book.dart';
 
 class StorageServices {
   static const String bookskey = 'books';
-  Future <List<Book>> getBooks() async {
+  Future<List<Book>> getBooks() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString(bookskey);
     if (jsonString == null || jsonString.isEmpty) {
@@ -12,17 +12,13 @@ class StorageServices {
     }
     final List<dynamic> decoded = jsonDecode(jsonString);
     return decoded
-          .map(
-            (item) => Book.fromJson(item as Map<String, dynamic>),
-          )
-          .toList();
+        .map((item) => Book.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<void> saveBooks(List<Book> books) async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonString = jsonEncode(
-      books.map((book) => book.toJson()).toList(),
-    );
+    final jsonString = jsonEncode(books.map((book) => book.toJson()).toList());
 
     await prefs.setString(bookskey, jsonString);
   }
@@ -41,12 +37,28 @@ class StorageServices {
 
   Future<void> updateBook(Book updateBook) async {
     final books = await getBooks();
-    final index = books.indexWhere(
-      (book) => book.id == updateBook.id,
-    );
+    final index = books.indexWhere((book) => book.id == updateBook.id);
     if (index == -1) return;
     books[index] = updateBook;
 
+    await saveBooks(books);
+  }
+
+  Future<void> updateBookProgress({
+    required String id,
+    required int lastPage,
+  }) async {
+    final books = await getBooks();
+    final index = books.indexWhere((book) => book.id == id);
+    if (index == -1) return;
+
+    final book = books[index];
+    books[index] = Book(
+      id: book.id,
+      title: book.title,
+      path: book.path,
+      lastPage: lastPage,
+    );
     await saveBooks(books);
   }
 }

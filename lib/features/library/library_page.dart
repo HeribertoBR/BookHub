@@ -108,6 +108,14 @@ class _LibraryPageState extends State<LibraryPage> {
     });
   }
 
+  Future<void> _openBook(Book book) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ReaderPage(book: book)),
+    );
+    await _loadBooks();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = ThemeController.instance.isDark;
@@ -325,7 +333,9 @@ class _LibraryPageState extends State<LibraryPage> {
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 5),
               child: Text(
-                'Documento PDF · Toca para abrir',
+                book.lastPage > 0
+                    ? 'Continuar desde la página ${book.lastPage + 1}'
+                    : 'Documento PDF · Toca para abrir',
                 style: TextStyle(
                   color: isDark
                       ? const Color(0xFFA9BAC7)
@@ -334,55 +344,68 @@ class _LibraryPageState extends State<LibraryPage> {
                 ),
               ),
             ),
-            trailing: PopupMenuButton<_BookAction>(
-              icon: const Icon(Icons.more_vert_rounded, color: _blue),
-              tooltip: 'Opciones del PDF',
-              onSelected: (action) {
-                switch (action) {
-                  case _BookAction.remove:
-                    _removeBook(book, deleteFile: false);
-                    break;
-                  case _BookAction.deleteFile:
-                    _removeBook(book, deleteFile: true);
-                    break;
-                }
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem<_BookAction>(
-                  value: _BookAction.remove,
-                  child: Row(
-                    children: [
-                      Icon(Icons.remove_circle_outline_rounded, size: 20),
-                      SizedBox(width: 10),
-                      Text('Quitar de la lista'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem<_BookAction>(
-                  value: _BookAction.deleteFile,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.delete_outline_rounded,
-                        size: 20,
-                        color: Colors.red,
+            trailing: SizedBox(
+              width: book.lastPage > 0 ? 96 : 48,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (book.lastPage > 0)
+                    IconButton(
+                      tooltip: 'Retomar lectura',
+                      onPressed: () => _openBook(book),
+                      icon: const Icon(
+                        Icons.play_circle_fill_rounded,
+                        color: _blue,
                       ),
-                      SizedBox(width: 10),
-                      Text('Eliminar PDF', style: TextStyle(color: Colors.red)),
+                    ),
+                  PopupMenuButton<_BookAction>(
+                    icon: const Icon(Icons.more_vert_rounded, color: _blue),
+                    tooltip: 'Opciones del PDF',
+                    onSelected: (action) {
+                      switch (action) {
+                        case _BookAction.remove:
+                          _removeBook(book, deleteFile: false);
+                          break;
+                        case _BookAction.deleteFile:
+                          _removeBook(book, deleteFile: true);
+                          break;
+                      }
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem<_BookAction>(
+                        value: _BookAction.remove,
+                        child: Row(
+                          children: [
+                            Icon(Icons.remove_circle_outline_rounded, size: 20),
+                            SizedBox(width: 10),
+                            Text('Quitar de la lista'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<_BookAction>(
+                        value: _BookAction.deleteFile,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete_outline_rounded,
+                              size: 20,
+                              color: Colors.red,
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'Eliminar PDF',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      ReaderPage(title: book.title, path: book.path),
-                ),
-              );
-            },
+            onTap: () => _openBook(book),
           ),
         );
       },
