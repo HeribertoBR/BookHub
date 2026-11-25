@@ -47,6 +47,7 @@ class StorageServices {
   Future<void> updateBookProgress({
     required String id,
     required int lastPage,
+    required int totalPages,
   }) async {
     final books = await getBooks();
     final index = books.indexWhere((book) => book.id == id);
@@ -58,6 +59,7 @@ class StorageServices {
       title: book.title,
       path: book.path,
       lastPage: lastPage,
+      totalPages: totalPages,
     );
     await saveBooks(books);
   }

@@ -332,16 +332,36 @@ class _LibraryPageState extends State<LibraryPage> {
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 5),
-              child: Text(
-                book.lastPage > 0
-                    ? 'Continuar desde la página ${book.lastPage + 1}'
-                    : 'Documento PDF · Toca para abrir',
-                style: TextStyle(
-                  color: isDark
-                      ? const Color(0xFFA9BAC7)
-                      : const Color(0xFF63798B),
-                  fontSize: 12,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    book.totalPages > 0
+                        ? '${book.readingProgressPercent}% leído · Página ${book.lastPage + 1} de ${book.totalPages}'
+                        : 'Documento PDF · Toca para abrir',
+                    style: TextStyle(
+                      color: isDark
+                          ? const Color(0xFFA9BAC7)
+                          : const Color(0xFF63798B),
+                      fontSize: 12,
+                    ),
+                  ),
+                  if (book.totalPages > 0) ...[
+                    const SizedBox(height: 7),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: book.readingProgress,
+                        minHeight: 5,
+                        backgroundColor: isDark
+                            ? const Color(0xFF30414F)
+                            : const Color(0xFFE2EDF5),
+                        color: _blue,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             trailing: SizedBox(

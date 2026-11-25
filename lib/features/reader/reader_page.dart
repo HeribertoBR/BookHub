@@ -44,6 +44,7 @@ class _ReaderPageState extends State<ReaderPage> {
     await _storageServices.updateBookProgress(
       id: widget.book.id,
       lastPage: _currentPage,
+      totalPages: _pageCount > 0 ? _pageCount : widget.book.totalPages,
     );
   }
 
@@ -51,7 +52,11 @@ class _ReaderPageState extends State<ReaderPage> {
     if (!fileExists) return 'Archivo no disponible';
     if (_hasLoadError) return 'No se pudo abrir';
     if (_pageCount == 0) return 'Preparando libro...';
-    return 'Página ${_currentPage + 1} de $_pageCount';
+    final percent = widget.book.progressAtPage(
+      _currentPage,
+      pageCount: _pageCount,
+    );
+    return 'Página ${_currentPage + 1} de $_pageCount · ${(percent * 100).round()}%';
   }
 
   @override
